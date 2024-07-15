@@ -1,12 +1,13 @@
 import { useReplyStore } from "./reply-store";
 import { useFetcher, useLoaderData } from "@remix-run/react";
 import { useEffect, useId, useState } from "react";
-import { Button, CheckboxGroup, Link, TextArea } from "@radix-ui/themes";
 import twitterText from "twitter-text";
-import { css } from "../../../styled-system/css";
 import type { loader, action } from "./route";
 import { useTranslation } from "react-i18next";
 import { FullscreenSpinner } from "../../components/fullscreen-spinner";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const imageFileTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const videoFileTypes = ["video/mp4", "video/quicktime"];
@@ -15,14 +16,14 @@ const TweetTextInput = () => {
 	const [tweetLength, setTweetLength] = useState(0);
 	return (
 		<>
-			<TextArea
+			<Textarea
 				name="text"
 				onChange={(e) => {
 					setTweetLength(twitterText.getTweetLength(e.target.value));
 				}}
-				className={css({ height: "150px", width: "100%" })}
+				className="h-[150px] w-full"
 			/>
-			<div className={css({ justifySelf: "end" })}>{tweetLength}/280</div>
+			<div className="justify-self-end">{tweetLength}/280</div>
 		</>
 	);
 };
@@ -33,9 +34,9 @@ const ImageFileInput = () => {
 	const { t } = useTranslation();
 
 	return (
-		<div className={css({ display: "grid", gap: "8px" })}>
+		<div className="grid gap-2">
 			<div>
-				<Button asChild className={css({ justifySelf: "start" })}>
+				<Button asChild className="justify-self-start">
 					<label htmlFor={inputId}>{t("uploadMedia")}</label>
 				</Button>
 				<input
@@ -50,14 +51,7 @@ const ImageFileInput = () => {
 					}}
 				/>
 			</div>
-			<div
-				className={css({
-					display: "grid",
-					gridTemplateColumns: "repeat(2, auto)",
-					gridTemplateRows: "repeat(2, auto)",
-					gap: "4px",
-				})}
-			>
+			<div className="grid grid-cols-[auto_auto] grid-rows-[auto_auto] gap-1">
 				{files?.map((file) =>
 					imageFileTypes.includes(file.type) ? (
 						<img
@@ -90,15 +84,7 @@ const ReplyDisplay = () => {
 	}
 
 	return (
-		<div
-			className={css({
-				color: "red",
-				display: "grid",
-				gap: "8px",
-				gridTemplateColumns: "1fr auto",
-				alignItems: "center",
-			})}
-		>
+		<div className="text-red-600 grid gap-2 grid-cols-[1fr_auto] items-center">
 			<input type="hidden" name="replyTwitterId" value={replyTwitterId} />
 			<input type="hidden" name="replyBlueskyId" value={replyBlueskyId} />
 			<div>{t("tweetAsReply")}</div>
@@ -124,27 +110,38 @@ const ServiceSelect = () => {
 	}
 
 	return (
-		<CheckboxGroup.Root name="service" defaultValue={serviceDefaultValue}>
+		<>
 			{data.twitterUsername && (
-				<CheckboxGroup.Item value="twitter">
-					Twitter:&nbsp;
-					<Link href={`https://x.com/${data.twitterUsername}`} target="_blank">
-						@{data.twitterUsername}
-					</Link>
-				</CheckboxGroup.Item>
+				<label className="grid grid-flow-col justify-start gap-1 items-center">
+					<Checkbox defaultChecked={Boolean(data.twitterUsername)} />
+					<span>
+						Twitter:&nbsp;
+						<a
+							href={`https://x.com/${data.twitterUsername}`}
+							target="_blank"
+							className="font-medium text-primary underline underline-offset-4"
+						>
+							@{data.twitterUsername}
+						</a>
+					</span>
+				</label>
 			)}
 			{data.blueskyUsername && (
-				<CheckboxGroup.Item value="bluesky">
-					Bluesky:&nbsp;
-					<Link
-						href={`https://bsky.app/profile/${data.blueskyUsername}`}
-						target="_blank"
-					>
-						@{data.blueskyUsername}
-					</Link>
-				</CheckboxGroup.Item>
+				<label className="grid grid-flow-col justify-start gap-1 items-center">
+					<Checkbox defaultChecked={Boolean(data.blueskyUsername)} />
+					<span>
+						Bluesky:&nbsp;
+						<a
+							href={`https://bsky.app/profile/${data.blueskyUsername}`}
+							target="_blank"
+							className="font-medium text-primary underline underline-offset-4"
+						>
+							@{data.blueskyUsername}
+						</a>
+					</span>
+				</label>
 			)}
-		</CheckboxGroup.Root>
+		</>
 	);
 };
 
@@ -165,24 +162,21 @@ export const TweetForm = () => {
 	return (
 		<>
 			{fetcher.data?.ok === false && (
-				<div className={css({ color: "red" })}>
+				<div className="text-red-600">
 					{t("tweetFailed")}: {fetcher.data.error}
 				</div>
 			)}
 			<fetcher.Form
 				method="post"
 				encType="multipart/form-data"
-				className={css({
-					display: "grid",
-					gap: "8px",
-				})}
+				className="grid gap-2"
 				key={formKey}
 			>
 				<ServiceSelect />
 				<ReplyDisplay />
 				<TweetTextInput />
 				<ImageFileInput />
-				<Button type="submit" className={css({ justifySelf: "end" })}>
+				<Button type="submit" className="justify-self-end">
 					{t("submit")}
 				</Button>
 			</fetcher.Form>

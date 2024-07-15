@@ -12,7 +12,7 @@ RUN npm ci
 COPY prisma prisma
 RUN npx prisma generate
 COPY app app
-COPY panda.config.ts postcss.config.cjs tsconfig.json vite.config.ts ./
+COPY postcss.config.cjs tsconfig.json vite.config.ts ./
 RUN npm run build
 
 

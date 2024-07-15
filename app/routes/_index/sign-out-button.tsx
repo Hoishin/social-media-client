@@ -1,5 +1,5 @@
+import { Button } from "@/components/ui/button";
 import { Form } from "@remix-run/react";
-import { Button } from "@radix-ui/themes";
 import { useTranslation } from "react-i18next";
 
 export const SignOutButton = () => {

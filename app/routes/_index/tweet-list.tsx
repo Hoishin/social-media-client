@@ -1,19 +1,26 @@
 import { useReplyStore } from "./reply-store";
 import { useFetcher, useLoaderData } from "@remix-run/react";
-import { Avatar, Button, Card } from "@radix-ui/themes";
 import type { loader } from "./route";
-import { css } from "../../../styled-system/css";
 import { useTranslation } from "react-i18next";
 import { ClientOnly } from "../../components/client-only";
 import twitterLogo from "./twitter-logo.png";
 import blueskyLogo from "./bluesky-logo.png";
 import { FullscreenSpinner } from "../../components/fullscreen-spinner";
 import { Fragment } from "react";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+	Card,
+	CardContent,
+	CardFooter,
+	CardHeader,
+} from "@/components/ui/card";
+import clsx from "clsx";
 
 const PostBodyText = ({ children }: { children: string }) => {
 	const lines = children.split(/\r?\n/g);
 	return (
-		<div className={css({ overflowWrap: "anywhere" })}>
+		<div className="break-anywhere">
 			{lines.map((line, i) => (
 				<Fragment key={i}>
 					{i > 0 && <br />}
@@ -67,40 +74,34 @@ export const TweetList = () => {
 	const { t } = useTranslation();
 
 	return (
-		<div className={css({ display: "grid", gap: "8px" })}>
+		<div className="grid gap-2">
 			{data.posts.map((post) => (
 				<Card
 					key={(post.twitterId ?? "") + (post.blueskyId ?? "")}
-					className={css(
-						((typeof post.twitterId === "string" &&
-							replyTwitterId === post.twitterId) ||
-							(typeof post.blueskyId === "string" &&
-								replyBlueskyId === post.blueskyId)) && {
-							border: "1px solid red",
-						}
+					className={clsx(
+						typeof post.twitterId === "string" &&
+							replyTwitterId === post.twitterId &&
+							"border border-solid border-red-600",
+						typeof post.blueskyId === "string" &&
+							replyBlueskyId === post.blueskyId &&
+							"border border-solid border-red-600"
 					)}
 				>
-					<div className={css({ display: "grid", gap: "8px" })}>
-						<div
-							className={css({
-								display: "grid",
-								gap: "8px",
-								gridAutoFlow: "column",
-								justifyContent: "start",
-								alignItems: "center",
-							})}
-						>
+					<CardHeader>
+						<div className="flex gap-2">
 							{post.twitterId && (
 								<a
 									href={`https://x.com/${data.twitterUsername}/status/${post.twitterId}`}
 									target="_blank"
 								>
-									<Avatar
-										src={twitterLogo}
-										fallback="Twitter"
-										alt="Twitter"
-										size="1"
-									/>
+									<Avatar className="w-8 h-8">
+										<AvatarImage
+											src={twitterLogo}
+											alt="Twitter"
+											className="w-8 h-8"
+										/>
+										<AvatarFallback>Twitter</AvatarFallback>
+									</Avatar>
 								</a>
 							)}
 							{post.blueskyId && (
@@ -110,46 +111,42 @@ export const TweetList = () => {
 									}/post/${post.blueskyId.split("/").at(-1)}`}
 									target="_blank"
 								>
-									<Avatar
-										src={blueskyLogo}
-										fallback="Bluesky"
-										alt="Bluesky"
-										size="1"
-									/>
+									<Avatar className="w-8 h-8">
+										<AvatarImage
+											src={blueskyLogo}
+											alt="Bluesky"
+											className="w-8 h-8"
+										/>
+										<AvatarFallback>Bluesky</AvatarFallback>
+									</Avatar>
 								</a>
 							)}
 						</div>
+					</CardHeader>
+					<CardContent>
 						<PostBodyText>{post.text}</PostBodyText>
-						<div
-							className={css({
-								display: "grid",
-								gap: "4px",
-								gridAutoFlow: "column",
-								gridTemplateColumns: "1fr auto auto",
-								alignItems: "end",
-							})}
-						>
-							<div className={css({ display: "grid" })}>
-								<ClientOnly>
-									{new Date(post.postedAt).toLocaleString()}
-								</ClientOnly>
-							</div>
-							<Button
-								onClick={() => {
-									setReply({
-										twitterId: post.twitterId,
-										blueskyId: post.blueskyId,
-									});
-								}}
-							>
-								{t("reply")}
-							</Button>
-							<DeletePostButton
-								twitterId={post.twitterId}
-								blueskyId={post.blueskyId}
-							/>
+					</CardContent>
+					<CardFooter className="grid gap-2 grid-flow-col grid-cols-[1fr_auto_auto] items-end">
+						<div className="grid">
+							<ClientOnly>
+								{new Date(post.postedAt).toLocaleString()}
+							</ClientOnly>
 						</div>
-					</div>
+						<Button
+							onClick={() => {
+								setReply({
+									twitterId: post.twitterId,
+									blueskyId: post.blueskyId,
+								});
+							}}
+						>
+							{t("reply")}
+						</Button>
+						<DeletePostButton
+							twitterId={post.twitterId}
+							blueskyId={post.blueskyId}
+						/>
+					</CardFooter>
 				</Card>
 			))}
 		</div>

@@ -3,10 +3,9 @@ import { discordOauthStateCookie } from "../cookies.server";
 import { env } from "../env.server";
 import { randomBytes } from "crypto";
 import { parseSession } from "../session.server";
-import { Button } from "@radix-ui/themes";
 import { Form } from "@remix-run/react";
-import { css } from "../../styled-system/css";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 
 const discordOauthRedirectUrl = new URL("/validate-oauth", env.SERVER_ORIGIN);
 
@@ -21,15 +20,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export default () => {
 	const { t } = useTranslation();
 	return (
-		<Form
-			method="post"
-			className={css({
-				width: "100vw",
-				height: "100vh",
-				display: "grid",
-				placeItems: "center",
-			})}
-		>
+		<Form method="post" className="w-screen h-screen grid place-items-center">
 			<Button type="submit">{t("signInWithDiscord")}</Button>
 		</Form>
 	);

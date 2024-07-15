@@ -6,11 +6,11 @@ import {
 } from "@remix-run/node";
 import { getStatus, inputConfirmationCode } from "../api/twitter.server";
 import { Form } from "@remix-run/react";
-import { Button, TextField } from "@radix-ui/themes";
-import { css } from "../../styled-system/css";
 import { zfd } from "zod-form-data";
 import { z } from "zod";
 import { assertSession } from "../session.server";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
 	await assertSession(request);
@@ -23,13 +23,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export default function ConfirmationCodePage() {
 	return (
-		<div className={css({ display: "grid", justifyContent: "center" })}>
-			<Form method="post" className={css({ display: "grid", gap: "8px" })}>
+		<div className="grid justify-center">
+			<Form method="post" className="grid gap-2">
 				<label>
 					Confirmation Code
-					<TextField.Root name="code" />
+					<Input name="code" />
 				</label>
-				<Button type="submit" className={css({ justifySelf: "end" })}>
+				<Button type="submit" className="justify-self-end">
 					Submit
 				</Button>
 			</Form>

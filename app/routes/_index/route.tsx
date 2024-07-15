@@ -3,7 +3,6 @@ import { useLoaderData } from "@remix-run/react";
 import { assertSession } from "../../session.server";
 import { prisma } from "../../prisma.server";
 import { env } from "../../env.server";
-import { css } from "../../../styled-system/css";
 import { TweetForm } from "./tweet-form";
 import { TweetList } from "./tweet-list";
 import {
@@ -22,6 +21,7 @@ import { useTranslation } from "react-i18next";
 import { SignOutButton } from "./sign-out-button";
 import { getBlueskyEnabled, post } from "../../api/bluesky.server";
 import fs from "node:fs/promises";
+import { ThemeModeToggle } from "@/components/theme-mode-toggle";
 
 interface Post {
 	twitterId?: string;
@@ -89,33 +89,12 @@ export default function IndexPage() {
 	const { t } = useTranslation();
 
 	return (
-		<div
-			className={css({
-				width: "100vw",
-				height: "100vh",
-				display: "grid",
-				justifyContent: "center",
-			})}
-		>
-			<div
-				className={css({
-					padding: "8px",
-					display: "grid",
-					alignContent: "start",
-					gap: "8px",
-					maxWidth: "100vw",
-					width: "400px",
-				})}
-			>
-				<div
-					className={css({
-						display: "grid",
-						gridTemplateColumns: "1fr auto",
-						placeSelf: "stretch",
-					})}
-				>
+		<div className="w-screen h-screen grid justify-center">
+			<div className="p-2 grid content-start gap-2 max-w-[100vw] w-[480px]">
+				<div className="grid grid-cols-[1fr_auto_auto] gap-2 items-center place-self-stretch">
 					<div>{t("signedInAs", { username: data.session.username })}</div>
-					<div className={css({ justifySelf: "end" })}>
+					<ThemeModeToggle />
+					<div className="justify-self-end">
 						<SignOutButton />
 					</div>
 				</div>
