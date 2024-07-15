@@ -8,7 +8,7 @@ import { getStatus, inputConfirmationCode } from "../api/twitter.server";
 import { Form } from "@remix-run/react";
 import { zfd } from "zod-form-data";
 import { z } from "zod";
-import { assertSession } from "../session.server";
+import { assertSession } from "../lib/session.server";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 

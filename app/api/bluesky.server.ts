@@ -1,10 +1,10 @@
 import { BskyAgent } from "@atproto/api";
-import { env } from "../env.server";
+import { env } from "../lib/env.server";
 import fs from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-import { tmpDir } from "../tmp-dir.server";
-import { prisma } from "../prisma.server";
+import { tmpDir } from "../lib/tmp-dir.server";
+import { prisma } from "../lib/prisma.server";
 import { isThreadViewPost } from "@atproto/api/dist/client/types/app/bsky/feed/defs";
 
 let blueskyEnabled = false;

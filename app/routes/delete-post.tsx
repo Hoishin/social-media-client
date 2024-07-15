@@ -1,8 +1,8 @@
 import { json, type ActionFunctionArgs } from "@remix-run/node";
 import { deleteTweet } from "../api/twitter.server";
-import { prisma } from "../prisma.server";
+import { prisma } from "../lib/prisma.server";
 import { zfd } from "zod-form-data";
-import { assertSession } from "../session.server";
+import { assertSession } from "../lib/session.server";
 import { deletePost } from "../api/bluesky.server";
 
 const actionSchema = zfd.formData({

@@ -1,8 +1,8 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
-import { assertSession } from "../../session.server";
-import { prisma } from "../../prisma.server";
-import { env } from "../../env.server";
+import { assertSession } from "../../lib/session.server";
+import { prisma } from "../../lib/prisma.server";
+import { env } from "../../lib/env.server";
 import { TweetForm } from "./tweet-form";
 import { TweetList } from "./tweet-list";
 import {
@@ -16,7 +16,7 @@ import {
 import { zfd } from "zod-form-data";
 import { z } from "zod";
 import { sendReply, tweet } from "../../api/twitter.server";
-import { tmpDir } from "../../tmp-dir.server";
+import { tmpDir } from "../../lib/tmp-dir.server";
 import { useTranslation } from "react-i18next";
 import { SignOutButton } from "./sign-out-button";
 import { getBlueskyEnabled, post } from "../../api/bluesky.server";

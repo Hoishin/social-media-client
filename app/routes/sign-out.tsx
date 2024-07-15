@@ -1,5 +1,5 @@
 import { redirect } from "@remix-run/node";
-import { sessionCookie } from "../cookies.server";
+import { sessionCookie } from "../lib/cookies.server";
 
 export const action = async () => {
 	const setCookie = await sessionCookie.serialize("", {

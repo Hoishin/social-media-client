@@ -1,6 +1,6 @@
 import { redirect } from "@remix-run/node";
 import { validateSession } from "./validate-session.server";
-import { sessionCookie } from "./cookies.server";
+import { sessionCookie } from "../lib/cookies.server";
 
 export const parseSession = async (request: Request) => {
 	const sessionToken: unknown = await sessionCookie.parse(

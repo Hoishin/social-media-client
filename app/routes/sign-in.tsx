@@ -1,8 +1,8 @@
 import { redirect, type LoaderFunctionArgs } from "@remix-run/node";
-import { discordOauthStateCookie } from "../cookies.server";
-import { env } from "../env.server";
+import { discordOauthStateCookie } from "../lib/cookies.server";
+import { env } from "../lib/env.server";
 import { randomBytes } from "crypto";
-import { parseSession } from "../session.server";
+import { parseSession } from "../lib/session.server";
 import { Form } from "@remix-run/react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";

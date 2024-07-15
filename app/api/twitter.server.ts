@@ -1,5 +1,5 @@
-import { env } from "../env.server.js";
-import { prisma } from "../prisma.server.js";
+import { env } from "../lib/env.server.js";
+import { prisma } from "../lib/prisma.server.js";
 import ky from "ky";
 import { uint8ArrayToBase64 } from "uint8array-extras";
 

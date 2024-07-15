@@ -1,9 +1,9 @@
 import { redirect, type LoaderFunctionArgs } from "@remix-run/node";
-import { discordOauthStateCookie, sessionCookie } from "../cookies.server";
-import { env } from "../env.server";
+import { discordOauthStateCookie, sessionCookie } from "../lib/cookies.server";
+import { env } from "../lib/env.server";
 import ky, { HTTPError } from "ky";
 import { randomBytes } from "node:crypto";
-import { prisma } from "../prisma.server";
+import { prisma } from "../lib/prisma.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
 	const url = new URL(request.url);
