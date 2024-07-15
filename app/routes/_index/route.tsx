@@ -16,7 +16,7 @@ import {
 } from "@remix-run/node";
 import { zfd } from "zod-form-data";
 import { z } from "zod";
-import { getTwitterEnabled, sendReply, tweet } from "../../api/twitter.server";
+import { sendReply, tweet } from "../../api/twitter.server";
 import { tmpDir } from "../../tmp-dir.server";
 import { useTranslation } from "react-i18next";
 import { SignOutButton } from "./sign-out-button";
@@ -133,6 +133,8 @@ const actionSchema = zfd.formData({
 	replyBlueskyId: zfd.text(z.string().optional()),
 });
 
+const twitterEnabled = Boolean(env.TWITTER_USERNAME && env.TWITTER_PASSWORD);
+
 export const action = async ({ request }: ActionFunctionArgs) => {
 	await assertSession(request);
 
@@ -169,8 +171,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 			await Promise.all([
 				postOnTwitter &&
 					replyTwitterId &&
-					getTwitterEnabled() &&
-					sendReply(replyTwitterId, text ?? "", filePaths),
+					twitterEnabled &&
+					sendReply(replyTwitterId, text ?? "", []), // TODO: files
 				postOnBluesky &&
 					replyBlueskyId &&
 					getBlueskyEnabled() &&
@@ -178,7 +180,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 			]);
 		} else {
 			await Promise.all([
-				postOnTwitter && getTwitterEnabled() && tweet(text ?? "", filePaths),
+				postOnTwitter && twitterEnabled && tweet(text ?? "", []), // TODO: files
 				postOnBluesky && getBlueskyEnabled() && post(text ?? "", filePaths),
 			]);
 		}

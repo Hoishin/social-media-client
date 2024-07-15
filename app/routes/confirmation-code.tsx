@@ -4,10 +4,7 @@ import {
 	type ActionFunctionArgs,
 	type LoaderFunctionArgs,
 } from "@remix-run/node";
-import {
-	getWaitingForConfirmationCode,
-	inputConfirmationCode,
-} from "../api/twitter.server";
+import { getStatus, inputConfirmationCode } from "../api/twitter.server";
 import { Form } from "@remix-run/react";
 import { Button, TextField } from "@radix-ui/themes";
 import { css } from "../../styled-system/css";
@@ -17,8 +14,8 @@ import { assertSession } from "../session.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
 	await assertSession(request);
-	const waitingForConfirmationCode = getWaitingForConfirmationCode();
-	if (!waitingForConfirmationCode) {
+	const status = await getStatus();
+	if (status !== "waitingForConfirmationCode") {
 		throw redirect("/");
 	}
 	return json(null);

@@ -1,8 +1,8 @@
 import { defineConfig } from "vite";
-import { vitePlugin as remix } from "@remix-run/dev";
+import * as remix from "@remix-run/dev";
 
 export default defineConfig({
-	plugins: [remix()],
+	plugins: [remix.vitePlugin()],
 	build: {
 		target: ["chrome120", "node20"],
 	},

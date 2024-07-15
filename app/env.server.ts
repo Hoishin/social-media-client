@@ -14,8 +14,8 @@ const envSchema = z.object({
 	TWITTER_USERNAME: z.string().optional(),
 	TWITTER_PASSWORD: z.string().optional(),
 	TWITTER_USER_EMAIL: z.string().optional(),
-	PUPPETEER_HEADLESS: z.coerce.boolean().default(false),
-	PUPPETEER_SCREENSHOT_PATH: z.string().optional(),
+	TWITTER_MANAGE_ORIGIN: z.string().url().optional(),
+	TWITTER_MANAGE_AUTH: z.string().optional(),
 
 	BLUESKY_USERNAME: z.string().optional(),
 	BLUESKY_PASSWORD: z.string().optional(),
