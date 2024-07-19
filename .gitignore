@@ -1,5 +1,6 @@
 /build
 dev.db
+/.dev.vars
 
 # Logs
 logs
