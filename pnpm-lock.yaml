@@ -35,15 +35,9 @@ importers:
       '@remix-run/cloudflare-pages':
         specifier: ^2.10.3
         version: 2.10.3(@cloudflare/workers-types@4.20240718.0)(typescript@5.5.3)
-      '@remix-run/node':
-        specifier: ^2.10.2
-        version: 2.10.2(typescript@5.5.3)
       '@remix-run/react':
         specifier: ^2.10.2
         version: 2.10.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.3)
-      '@remix-run/serve':
-        specifier: ^2.10.2
-        version: 2.10.2(typescript@5.5.3)
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.0
@@ -5704,6 +5698,7 @@ snapshots:
       express: 4.19.2
     optionalDependencies:
       typescript: 5.5.3
+    optional: true
 
   '@remix-run/node@2.10.2(typescript@5.5.3)':
     dependencies:
@@ -5746,6 +5741,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
       - typescript
+    optional: true
 
   '@remix-run/server-runtime@2.10.2(typescript@5.5.3)':
     dependencies:
@@ -6131,6 +6127,7 @@ snapshots:
   basic-auth@2.0.1:
     dependencies:
       safe-buffer: 5.1.2
+    optional: true
 
   binary-extensions@2.3.0: {}
 
@@ -6195,7 +6192,8 @@ snapshots:
       base64-js: 1.5.1
       ieee754: 1.2.1
 
-  bytes@3.0.0: {}
+  bytes@3.0.0:
+    optional: true
 
   bytes@3.1.2: {}
 
@@ -6321,6 +6319,7 @@ snapshots:
   compressible@2.0.18:
     dependencies:
       mime-db: 1.52.0
+    optional: true
 
   compression@1.7.4:
     dependencies:
@@ -6333,6 +6332,7 @@ snapshots:
       vary: 1.1.2
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   concat-map@0.0.1: {}
 
@@ -7721,6 +7721,7 @@ snapshots:
       on-headers: 1.0.2
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   mri@1.2.0: {}
 
@@ -7813,12 +7814,14 @@ snapshots:
   on-finished@2.3.0:
     dependencies:
       ee-first: 1.1.1
+    optional: true
 
   on-finished@2.4.1:
     dependencies:
       ee-first: 1.1.1
 
-  on-headers@1.0.2: {}
+  on-headers@1.0.2:
+    optional: true
 
   once@1.4.0:
     dependencies:
