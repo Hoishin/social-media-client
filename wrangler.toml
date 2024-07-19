@@ -14,3 +14,7 @@ DISCORD_VALID_ROLE_IDS = ["1155559423394197635", "1155559738063458444"]
 binding = "DB"
 database_name = "rtainjapan-social-media"
 database_id = "86a823ea-35dd-4a2a-b9d1-c48c56674ad2"
+
+[[kv_namespaces]]
+binding = "SESSION_KV"
+id = "36a1ae0ce12045c8bc89416a4f84eff3"
