@@ -1,5 +1,4 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
 import { assertSession } from "../../lib/session.server";
 import { prisma } from "../../lib/prisma.server";
 import { env } from "../../lib/env.server";
@@ -17,11 +16,8 @@ import { zfd } from "zod-form-data";
 import { z } from "zod";
 import { sendReply, tweet } from "../../api/twitter.server";
 import { tmpDir } from "../../lib/tmp-dir.server";
-import { useTranslation } from "react-i18next";
-import { SignOutButton } from "./sign-out-button";
 import { getBlueskyEnabled, post } from "../../api/bluesky.server";
 import fs from "node:fs/promises";
-import { ThemeModeToggle } from "@/components/theme-mode-toggle";
 
 interface Post {
 	twitterId?: string;
@@ -85,23 +81,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export default function IndexPage() {
-	const data = useLoaderData<typeof loader>();
-	const { t } = useTranslation();
-
 	return (
-		<div className="w-screen h-screen grid justify-center">
-			<div className="p-2 grid content-start gap-2 max-w-[100vw] w-[480px]">
-				<div className="grid grid-cols-[1fr_auto_auto] gap-2 items-center place-self-stretch">
-					<div>{t("signedInAs", { username: data.session.username })}</div>
-					<ThemeModeToggle />
-					<div className="justify-self-end">
-						<SignOutButton />
-					</div>
-				</div>
-				<TweetForm />
-				<TweetList />
-			</div>
-		</div>
+		<>
+			<TweetForm />
+			<TweetList />
+		</>
 	);
 }
 

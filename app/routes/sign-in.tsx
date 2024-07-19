@@ -20,9 +20,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export default () => {
 	const { t } = useTranslation();
 	return (
-		<Form method="post" className="w-screen h-screen grid place-items-center">
-			<Button type="submit">{t("signInWithDiscord")}</Button>
-		</Form>
+		<div className="grid place-items-center">
+			<Form method="post">
+				<Button type="submit">{t("signInWithDiscord")}</Button>
+			</Form>
+		</div>
 	);
 };
 

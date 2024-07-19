@@ -12,12 +12,16 @@ import {
 	Scripts,
 	ScrollRestoration,
 	json,
+	useLoaderData,
 	useRouteLoaderData,
 } from "@remix-run/react";
 import { remixI18next } from "./i18next/remix-i18next.server";
 import { useTranslation } from "react-i18next";
 import type { PropsWithChildren } from "react";
 import { ThemeProvider } from "next-themes";
+import { parseSession } from "./lib/session.server";
+import { ThemeModeToggle } from "./components/theme-mode-toggle";
+import { SignOutButton } from "./routes/_index/sign-out-button";
 
 export const meta: MetaFunction = () => [
 	{ charSet: "utf-8" },
@@ -28,8 +32,11 @@ export const meta: MetaFunction = () => [
 export const links: LinksFunction = () => [{ rel: "icon", href: "data:," }];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-	const [locale] = await Promise.all([remixI18next.getLocale(request)]);
-	return json({ locale });
+	const [locale, session] = await Promise.all([
+		remixI18next.getLocale(request),
+		parseSession(request),
+	]);
+	return json({ locale, session });
 };
 
 export const Layout = ({ children }: PropsWithChildren) => {
@@ -43,10 +50,7 @@ export const Layout = ({ children }: PropsWithChildren) => {
 				<Links />
 			</head>
 			<body>
-				<ThemeProvider attribute="class">
-					{children}
-					<div id="spinner-portal" />
-				</ThemeProvider>
+				<ThemeProvider attribute="class">{children}</ThemeProvider>
 				<ScrollRestoration />
 				<Scripts />
 			</body>
@@ -54,6 +58,35 @@ export const Layout = ({ children }: PropsWithChildren) => {
 	);
 };
 
+const Header = () => {
+	const { session } = useLoaderData<typeof loader>();
+	const { t } = useTranslation();
+	if (!session) {
+		return (
+			<header className="grid justify-end">
+				<ThemeModeToggle />
+			</header>
+		);
+	}
+	return (
+		<header className="flex gap-2">
+			<div className="grow">
+				{t("signedInAs", { username: session.username })}
+			</div>
+			<ThemeModeToggle />
+			<SignOutButton />
+		</header>
+	);
+};
+
 export default function Root() {
-	return <Outlet />;
+	return (
+		<div className="w-screen h-screen grid justify-center">
+			<div className="p-2 grid content-start gap-2 max-w-[100vw] w-[480px]">
+				<Header />
+				<Outlet />
+				<div id="spinner-portal" />
+			</div>
+		</div>
+	);
 }
