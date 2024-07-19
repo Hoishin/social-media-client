@@ -1,4 +1,4 @@
-import { createCookie } from "@remix-run/node";
+import { createCookie } from "@remix-run/cloudflare";
 import { env } from "./env.server";
 
 export const sessionCookie = createCookie("app_session_token", {

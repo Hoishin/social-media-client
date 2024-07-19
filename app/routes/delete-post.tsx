@@ -1,4 +1,4 @@
-import { json, type ActionFunctionArgs } from "@remix-run/node";
+import { json, type ActionFunctionArgs } from "@remix-run/cloudflare";
 import { deleteTweet } from "../api/twitter.server";
 import { prisma } from "../lib/prisma.server";
 import { zfd } from "zod-form-data";

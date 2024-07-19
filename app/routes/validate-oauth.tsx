@@ -1,4 +1,4 @@
-import { redirect, type LoaderFunctionArgs } from "@remix-run/node";
+import { redirect, type LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { discordOauthStateCookie, sessionCookie } from "../lib/cookies.server";
 import { env } from "../lib/env.server";
 import ky, { HTTPError } from "ky";

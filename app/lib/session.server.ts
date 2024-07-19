@@ -1,4 +1,4 @@
-import { redirect } from "@remix-run/node";
+import { redirect } from "@remix-run/cloudflare";
 import { validateSession } from "./validate-session.server";
 import { sessionCookie } from "../lib/cookies.server";
 

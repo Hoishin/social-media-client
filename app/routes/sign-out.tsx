@@ -1,4 +1,4 @@
-import { redirect } from "@remix-run/node";
+import { redirect } from "@remix-run/cloudflare";
 import { sessionCookie } from "../lib/cookies.server";
 
 export const action = async () => {
