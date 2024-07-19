@@ -7,6 +7,7 @@ import browserslistToEsbuild from "browserslist-to-esbuild";
 export default defineConfig({
 	plugins: [
 		tsconfigPaths(),
+		remix.cloudflareDevProxyVitePlugin({ getLoadContext }),
 		remix.vitePlugin({
 			future: {
 				v3_fetcherPersist: true,
@@ -14,7 +15,6 @@ export default defineConfig({
 				v3_throwAbortReason: true,
 			},
 		}),
-		remix.cloudflareDevProxyVitePlugin({ getLoadContext }),
 	],
 	build: {
 		target: browserslistToEsbuild([
