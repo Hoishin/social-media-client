@@ -1,20 +1,14 @@
-import { BskyAgent } from "@atproto/api";
-import { env } from "../lib/env.server";
-import fs from "node:fs/promises";
-import path from "node:path";
+import type { BskyAgent } from "@atproto/api";
 import sharp from "sharp";
-import { tmpDir } from "../lib/tmp-dir.server";
-import { prisma } from "../lib/prisma.server";
 import { isThreadViewPost } from "@atproto/api/dist/client/types/app/bsky/feed/defs";
+import { base64ToUint8Array } from "uint8array-extras";
+import type { PrismaClient } from "@prisma/client";
 
-let blueskyEnabled = false;
-export const getBlueskyEnabled = () => blueskyEnabled;
-
-const agent = new BskyAgent({ service: "https://bsky.social" });
-
-let selfDid: string;
-
-export const getPosts = async () => {
+export const getPosts = async (
+	agent: BskyAgent,
+	selfDid: string,
+	db: PrismaClient
+) => {
 	try {
 		const feed = await agent.getAuthorFeed({
 			actor: selfDid,
@@ -27,7 +21,7 @@ export const getPosts = async () => {
 				const record = post.record as { text: string; createdAt: string };
 				const text = record.text;
 				const createdAt = new Date(record.createdAt);
-				await prisma.blueskyPosts.upsert({
+				await db.blueskyPosts.upsert({
 					create: {
 						postId: id,
 						text,
@@ -46,48 +40,36 @@ export const getPosts = async () => {
 	}
 };
 
-if (env.BLUESKY_USERNAME && env.BLUESKY_PASSWORD) {
-	blueskyEnabled = true;
-	await agent.login({
-		identifier: env.BLUESKY_USERNAME,
-		password: env.BLUESKY_PASSWORD,
-	});
-	const selfProfile = await agent.getProfile({ actor: env.BLUESKY_USERNAME });
-	selfDid = selfProfile.data.did;
-	console.log(`Logged in to Bluesky as ${env.BLUESKY_USERNAME} (${selfDid})`);
-	await getPosts();
-}
-
 const FILE_SIZE_LIMIT = 1_000_000; // 1 million bytes or 976.56 KB
 
-const scaleImage = async (
-	inputPath: string,
-	outputPath: string,
-	quality = 100
-) => {
-	await sharp(inputPath).jpeg({ quality }).toFile(outputPath);
-	const outputFileStat = await fs.stat(outputPath);
-	if (outputFileStat.size < FILE_SIZE_LIMIT) {
-		return;
+const scaleImage = async (input: Uint8Array, quality = 100) => {
+	const output = await sharp(input)
+		.toFormat("jpeg")
+		.jpeg({ quality })
+		.toBuffer();
+	if (output.byteLength < FILE_SIZE_LIMIT) {
+		return output;
 	}
-	await scaleImage(inputPath, outputPath, quality - 5);
+	return scaleImage(input, quality - 5);
 };
 
-const uploadFile = async (filePath: string) => {
-	const scaleOutputPath = path.join(tmpDir, `${crypto.randomUUID()}.jpeg`);
-	await scaleImage(filePath, scaleOutputPath);
-	const data = await fs.readFile(scaleOutputPath);
-	const res = await agent.uploadBlob(data, { encoding: "image/jpeg" });
-	await fs.rm(scaleOutputPath);
+const uploadFile = async (agent: BskyAgent, fileBase64: string) => {
+	const output = await scaleImage(base64ToUint8Array(fileBase64));
+	const res = await agent.uploadBlob(output, { encoding: "image/jpeg" });
 	return res.data.blob;
 };
 
-export const post = async (text: string, files: string[], replyTo?: string) => {
+export const post = async (
+	agent: BskyAgent,
+	selfDid: string,
+	db: PrismaClient,
+	text: string,
+	files: string[],
+	replyTo?: string
+) => {
 	const replyPostThreadData = replyTo
 		? await agent.getPostThread({ uri: replyTo })
 		: null;
-	// console.log(JSON.stringify(replyPost?.data, null, 2));
-	// throw new Error("tmp!!!");
 
 	const replyPost =
 		replyPostThreadData && isThreadViewPost(replyPostThreadData.data.thread)
@@ -99,7 +81,9 @@ export const post = async (text: string, files: string[], replyTo?: string) => {
 		| undefined;
 	const rootPost = replyPostRecord?.reply?.root ?? replyPost;
 
-	const uploadResults = await Promise.all(files.map(uploadFile));
+	const uploadResults = await Promise.all(
+		files.map((file) => uploadFile(agent, file))
+	);
 	await agent.post({
 		text,
 		embed: {
@@ -117,9 +101,9 @@ export const post = async (text: string, files: string[], replyTo?: string) => {
 				  }
 				: undefined,
 	});
-	await getPosts();
+	await getPosts(agent, selfDid, db);
 };
 
-export const deletePost = async (postId: string) => {
+export const deletePost = async (agent: BskyAgent, postId: string) => {
 	await agent.deletePost(postId);
 };

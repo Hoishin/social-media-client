@@ -1,13 +1,5 @@
-import { redirect } from "@remix-run/cloudflare";
-import { sessionCookie } from "../lib/cookies.server";
+import { type ActionFunctionArgs } from "@remix-run/cloudflare";
 
-export const action = async () => {
-	const setCookie = await sessionCookie.serialize("", {
-		maxAge: 0,
-	});
-	throw redirect("/sign-in", {
-		headers: {
-			"Set-Cookie": setCookie,
-		},
-	});
+export const action = async ({ request, context }: ActionFunctionArgs) => {
+	return context.auth.logout(request, { redirectTo: "/sign-in" });
 };

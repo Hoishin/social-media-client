@@ -1,28 +1,19 @@
-import { redirect } from "@remix-run/cloudflare";
-import { validateSession } from "./validate-session.server";
-import { sessionCookie } from "../lib/cookies.server";
+import { type AppLoadContext } from "@remix-run/cloudflare";
 
-export const parseSession = async (request: Request) => {
-	const sessionToken: unknown = await sessionCookie.parse(
-		request.headers.get("Cookie")
-	);
-	if (typeof sessionToken !== "string") {
-		return null;
-	}
-	const session = await validateSession(sessionToken);
-	if (!session) {
-		return null;
-	}
-	return {
-		id: session.id,
-		username: session.discordUsername,
-	};
+export const parseSession = async (
+	request: Request,
+	context: AppLoadContext
+) => {
+	const session = await context.auth.isAuthenticated(request);
+	return session;
 };
 
-export const assertSession = async (request: Request) => {
-	const session = await parseSession(request);
-	if (!session) {
-		throw redirect("/sign-in");
-	}
+export const assertSession = async (
+	request: Request,
+	context: AppLoadContext
+) => {
+	const session = await context.auth.isAuthenticated(request, {
+		failureRedirect: "/sign-in",
+	});
 	return session;
 };

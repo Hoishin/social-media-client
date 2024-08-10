@@ -1,6 +1,4 @@
 import { assertSession } from "../../lib/session.server";
-import { prisma } from "../../lib/prisma.server";
-import { env } from "../../lib/env.server";
 import { TweetForm } from "./tweet-form";
 import { TweetList } from "./tweet-list";
 import {
@@ -13,10 +11,8 @@ import {
 } from "@remix-run/cloudflare";
 import { zfd } from "zod-form-data";
 import { z } from "zod";
-import { sendReply, tweet } from "../../api/twitter.server";
-import { tmpDir } from "../../lib/tmp-dir.server";
-import { getBlueskyEnabled, post } from "../../api/bluesky.server";
-import fs from "node:fs/promises";
+import { post } from "../../api/bluesky.server";
+import { uint8ArrayToBase64 } from "uint8array-extras";
 
 interface Post {
 	twitterId?: string;
@@ -25,16 +21,16 @@ interface Post {
 	postedAt: Date;
 }
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
+export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 	const [session, tweets, blueskyPosts] = await Promise.all([
-		assertSession(request),
-		prisma.tweets.findMany({
+		assertSession(request, context),
+		context.db.tweets.findMany({
 			orderBy: {
 				tweetedAt: "desc",
 			},
 			take: 100,
 		}),
-		prisma.blueskyPosts.findMany({
+		context.db.blueskyPosts.findMany({
 			orderBy: {
 				postedAt: "desc",
 			},
@@ -74,8 +70,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 	return json({
 		session,
 		posts,
-		twitterUsername: env.TWITTER_USERNAME,
-		blueskyUsername: env.BLUESKY_USERNAME,
+		twitterUsername: context.twitter.enabled
+			? context.twitter.username
+			: undefined,
+		blueskyUsername: context.bluesky.enabled
+			? context.bluesky.username
+			: undefined,
 	});
 };
 
@@ -90,39 +90,38 @@ export default function IndexPage() {
 
 const actionSchema = zfd.formData({
 	text: zfd.text(z.string().optional()),
-	service: zfd.repeatableOfType(zfd.text(z.enum(["twitter", "bluesky"]))),
+	twitter: zfd.checkbox(),
+	bluesky: zfd.checkbox(),
 	replyTwitterId: zfd.text(z.string().optional()),
 	replyBlueskyId: zfd.text(z.string().optional()),
 });
 
-const twitterEnabled = Boolean(env.TWITTER_USERNAME && env.TWITTER_PASSWORD);
-
-export const action = async ({ request }: ActionFunctionArgs) => {
-	await assertSession(request);
+export const action = async ({ request, context }: ActionFunctionArgs) => {
+	await assertSession(request, context);
 
 	try {
 		const formData = await unstable_parseMultipartFormData(
 			request,
-			unstable_composeUploadHandlers(
-				unstable_createFileUploadHandler({
-					maxPartSize: 100_000_000,
-					directory: tmpDir,
-				}),
-				unstable_createMemoryUploadHandler()
-			)
+			unstable_composeUploadHandlers(async ({ data, name }) => {
+				if (name !== "files") {
+					return undefined;
+				}
+				let base64 = "";
+				for await (const chunk of data) {
+					base64 += uint8ArrayToBase64(chunk);
+				}
+				return base64;
+			}, unstable_createMemoryUploadHandler())
 		);
 
-		const { text, service, replyTwitterId, replyBlueskyId } =
+		const { text, twitter, bluesky, replyTwitterId, replyBlueskyId } =
 			actionSchema.parse(formData);
 
-		const postOnTwitter = service.includes("twitter");
-		const postOnBluesky = service.includes("bluesky");
-
 		const files = formData.getAll("files");
-		const filePaths: string[] = [];
+		const fileArray: string[] = [];
 		for (const file of files) {
-			if (file instanceof NodeOnDiskFile) {
-				filePaths.push(file.getFilePath());
+			if (typeof file === "string" && file) {
+				fileArray.push(file);
 			}
 		}
 
@@ -131,23 +130,38 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 			typeof replyBlueskyId === "string"
 		) {
 			await Promise.all([
-				postOnTwitter &&
+				twitter &&
 					replyTwitterId &&
-					twitterEnabled &&
-					sendReply(replyTwitterId, text ?? "", []), // TODO: files
-				postOnBluesky &&
+					context.twitter.enabled &&
+					context.twitter.sendReply(replyTwitterId, text ?? "", fileArray),
+				bluesky &&
 					replyBlueskyId &&
-					getBlueskyEnabled() &&
-					post(text ?? "", filePaths, replyBlueskyId),
+					context.bluesky.enabled &&
+					post(
+						context.bluesky.agent,
+						context.bluesky.selfDid,
+						context.db,
+						text ?? "",
+						fileArray,
+						replyBlueskyId
+					),
 			]);
 		} else {
 			await Promise.all([
-				postOnTwitter && twitterEnabled && tweet(text ?? "", []), // TODO: files
-				postOnBluesky && getBlueskyEnabled() && post(text ?? "", filePaths),
+				twitter &&
+					context.twitter.enabled &&
+					context.twitter.tweet(text ?? "", fileArray),
+				bluesky &&
+					context.bluesky.enabled &&
+					post(
+						context.bluesky.agent,
+						context.bluesky.selfDid,
+						context.db,
+						text ?? "",
+						fileArray
+					),
 			]);
 		}
-
-		await Promise.all(filePaths.map((filePath) => fs.rm(filePath)));
 
 		return json({ ok: true, data: text } as const);
 	} catch (error) {

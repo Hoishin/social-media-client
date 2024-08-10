@@ -113,7 +113,10 @@ const ServiceSelect = () => {
 		<>
 			{data.twitterUsername && (
 				<label className="grid grid-flow-col justify-start gap-1 items-center">
-					<Checkbox defaultChecked={Boolean(data.twitterUsername)} />
+					<Checkbox
+						name="twitter"
+						defaultChecked={Boolean(data.twitterUsername)}
+					/>
 					<span>
 						Twitter:&nbsp;
 						<a
@@ -128,7 +131,10 @@ const ServiceSelect = () => {
 			)}
 			{data.blueskyUsername && (
 				<label className="grid grid-flow-col justify-start gap-1 items-center">
-					<Checkbox defaultChecked={Boolean(data.blueskyUsername)} />
+					<Checkbox
+						name="bluesky"
+						defaultChecked={Boolean(data.blueskyUsername)}
+					/>
 					<span>
 						Bluesky:&nbsp;
 						<a

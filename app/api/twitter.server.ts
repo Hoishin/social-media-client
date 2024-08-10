@@ -1,139 +1,166 @@
-import { env } from "../lib/env.server.js";
-import { prisma } from "../lib/prisma.server.js";
-import ky from "ky";
-import { uint8ArrayToBase64 } from "uint8array-extras";
+import type { PrismaClient } from "@prisma/client";
+import ky, { HTTPError } from "ky";
 
-const apiKy = ky.create({
-	prefixUrl: env.TWITTER_MANAGE_ORIGIN,
-	headers: { Authorization: env.TWITTER_MANAGE_AUTH },
-});
-
-const getLatestSession = async () => {
-	const session = await prisma.twitterManageSession.findFirst({
-		orderBy: { createdAt: "desc" },
-		select: { id: true, status: true },
+export const setupTwitterClient = ({
+	manageOrigin,
+	manageAuth,
+	username,
+	password,
+	email,
+	db,
+}: {
+	manageOrigin: string;
+	manageAuth: string;
+	username: string;
+	password: string;
+	email: string;
+	db: PrismaClient;
+}) => {
+	const apiKy = ky.create({
+		prefixUrl: manageOrigin,
+		headers: { Authorization: manageAuth },
 	});
-	if (!session) {
-		throw new Error("no session");
-	}
-	return session;
-};
 
-const getSessionStatus = async (id: string) => {
-	const { status } = await apiKy
-		.post("get-status", {
-			json: { sessionId: id },
-		})
-		.json<{ status: "loggedIn" | "waitingForConfirmationCode" }>();
-	return status;
-};
+	const createSession = async () => {
+		const { id, status } = await apiKy
+			.post("create-session", {
+				json: { username, password, email },
+			})
+			.json<{
+				id: string;
+				status: "loggedIn" | "waitingForConfirmationCode";
+			}>();
+		await db.twitterManageSession.create({
+			data: { id },
+		});
+		return { id, status };
+	};
 
-export const initialize = async () => {
-	const { id, status } = await apiKy
-		.post("create-session", {
-			json: {
-				username: env.TWITTER_USERNAME,
-				password: env.TWITTER_PASSWORD,
-				email: env.TWITTER_USER_EMAIL,
-			},
-		})
-		.json<{ id: string; status: "loggedIn" | "waitingForConfirmationCode" }>();
-	await prisma.twitterManageSession.upsert({
-		where: { id },
-		update: { status },
-		create: { id, status },
-	});
-};
+	const getSessionStatus = async (id: string) => {
+		const { status } = await apiKy
+			.post("get-status", {
+				json: { sessionId: id },
+			})
+			.json<{ status: "loggedIn" | "waitingForConfirmationCode" }>();
+		return status;
+	};
 
-export const getStatus = async () => {
-	const latestSession = await getLatestSession();
-	const status = await getSessionStatus(latestSession.id);
-	return status;
-}
+	const getOrCreateSession = async () => {
+		const latestSavedSession = await db.twitterManageSession.findFirst({
+			orderBy: { createdAt: "desc" },
+			select: { id: true },
+		});
 
-export const inputConfirmationCode = async (code: string) => {
-	const twitterSession = await prisma.twitterManageSession.findFirst({
-		orderBy: { createdAt: "desc" },
-		select: { id: true },
-	});
-	if (!twitterSession) {
-		throw new Error("no session");
-	}
-	const status = await getSessionStatus(twitterSession.id);
-	if (status !== "waitingForConfirmationCode") {
-		throw new Error("latest session is already logged in");
-	}
-	await apiKy
-		.post("input-confirmation-code", {
-			json: { sessionId: twitterSession.id, code },
-		})
-		.json<void>();
-};
+		if (!latestSavedSession) {
+			const session = await createSession();
+			return session;
+		}
 
-export const getTweets = async () => {
-	const latestSession = await getLatestSession();
-	if (latestSession.status !== "loggedIn") {
-		throw new Error("session is not logged in");
-	}
-	const tweets = await apiKy
-		.post("get-tweets", { json: { sessionId: latestSession.id } })
-		.json<{ tweetId: string; text: string; tweetedAt: Date }[]>();
-
-	await prisma.$transaction(async (tx) => {
-		await Promise.all(
-			tweets.map((tweet) =>
-				tx.tweets.upsert({
-					where: { tweetId: tweet.tweetId },
-					update: { text: tweet.text, tweetedAt: tweet.tweetedAt },
-					create: tweet,
-				})
-			)
+		const status = await getSessionStatus(latestSavedSession.id).catch(
+			(error) => {
+				if (error instanceof HTTPError && error.response.status === 404) {
+					return null;
+				}
+				throw error;
+			}
 		);
-	});
-};
 
-export const tweet = async (text: string, files: Uint8Array[]) => {
-	const latestSession = await getLatestSession();
-	if (latestSession.status !== "loggedIn") {
-		throw new Error("session is not logged in");
-	}
-	await apiKy.post("tweet", {
-		json: {
-			sessionId: latestSession.id,
-			text,
-			files: files.map((file) => uint8ArrayToBase64(file)),
-		},
-	});
-};
+		if (status === "waitingForConfirmationCode" || status === "loggedIn") {
+			return { id: latestSavedSession.id, status };
+		}
 
-export const deleteTweet = async (tweetId: string) => {
-	const latestSession = await getLatestSession();
-	if (latestSession.status !== "loggedIn") {
-		throw new Error("session is not logged in");
-	}
-	await apiKy.post("delete-tweet", {
-		json: {
-			sessionId: latestSession.id,
-			tweetId,
-		},
-	});
-};
+		const session = await createSession();
+		return session;
+	};
 
-export const sendReply = async (
-	tweetId: string,
-	text: string,
-	files: Uint8Array[]
-) => {
-	const latestSession = await getLatestSession();
-	if (latestSession.status !== "loggedIn") {
-		throw new Error("session is not logged in");
-	}
-	await apiKy.post("reply", {
-		json: {
-			sessionId: latestSession.id,
-			tweetId,
-			text,
-			files: files.map((file) => uint8ArrayToBase64(file)),
-		},
-	});
+	const inputConfirmationCode = async (code: string) => {
+		const session = await getOrCreateSession();
+		if (session.status !== "waitingForConfirmationCode") {
+			throw new Error("latest session is already logged in");
+		}
+		await apiKy
+			.post("input-confirmation-code", {
+				json: { sessionId: session.id, code },
+			})
+			.json<void>();
+	};
+
+	const getTweets = async () => {
+		const session = await getOrCreateSession();
+		if (session.status !== "loggedIn") {
+			throw new Error("session is not logged in");
+		}
+		const tweets = await apiKy
+			.post("get-tweets", { json: { sessionId: session.id } })
+			.json<{ tweetId: string; text: string; tweetedAt: Date }[]>();
+
+		await db.$transaction(async (tx) => {
+			await Promise.all(
+				tweets.map((tweet) =>
+					tx.tweets.upsert({
+						where: { tweetId: tweet.tweetId },
+						update: { text: tweet.text, tweetedAt: tweet.tweetedAt },
+						create: tweet,
+					})
+				)
+			);
+		});
+	};
+
+	const tweet = async (text: string, files: string[]) => {
+		const session = await getOrCreateSession();
+		if (session.status !== "loggedIn") {
+			throw new Error("session is not logged in");
+		}
+		await apiKy.post("tweet", {
+			json: {
+				sessionId: session.id,
+				text,
+				files,
+			},
+		});
+	};
+
+	const deleteTweet = async (tweetId: string) => {
+		const session = await getOrCreateSession();
+		if (session.status !== "loggedIn") {
+			throw new Error("session is not logged in");
+		}
+		await apiKy.post("delete-tweet", {
+			json: {
+				sessionId: session.id,
+				tweetId,
+			},
+		});
+		await db.tweets.delete({ where: { tweetId } });
+	};
+
+	const sendReply = async (tweetId: string, text: string, files: string[]) => {
+		const session = await getOrCreateSession();
+		if (session.status !== "loggedIn") {
+			throw new Error("session is not logged in");
+		}
+		await apiKy.post("tweet", {
+			json: {
+				sessionId: session.id,
+				replyToTweetId: tweetId,
+				text,
+				files,
+			},
+		});
+	};
+
+	const getStatus = async () => {
+		const session = await getOrCreateSession();
+		return session.status;
+	};
+
+	return {
+		getStatus,
+		inputConfirmationCode,
+		getTweets,
+		tweet,
+		deleteTweet,
+		sendReply,
+	};
 };

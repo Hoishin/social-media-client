@@ -1,6 +1,4 @@
 import { json, type ActionFunctionArgs } from "@remix-run/cloudflare";
-import { deleteTweet } from "../api/twitter.server";
-import { prisma } from "../lib/prisma.server";
 import { zfd } from "zod-form-data";
 import { assertSession } from "../lib/session.server";
 import { deletePost } from "../api/bluesky.server";
@@ -10,18 +8,20 @@ const actionSchema = zfd.formData({
 	blueskyId: zfd.text().optional(),
 });
 
-export const action = async ({ request }: ActionFunctionArgs) => {
-	await assertSession(request);
+export const action = async ({ request, context }: ActionFunctionArgs) => {
+	await assertSession(request, context);
 
 	const data = actionSchema.parse(await request.formData());
 
 	await Promise.all([
-		data.twitterId && deleteTweet(data.twitterId),
 		data.twitterId &&
-			prisma.tweets.delete({ where: { tweetId: data.twitterId } }),
-		data.blueskyId && deletePost(data.blueskyId),
+			context.twitter.enabled &&
+			context.twitter.deleteTweet(data.twitterId),
 		data.blueskyId &&
-			prisma.blueskyPosts.delete({ where: { postId: data.blueskyId } }),
+			context.bluesky.enabled &&
+			deletePost(context.bluesky.agent, data.blueskyId),
+		data.blueskyId &&
+			context.db.blueskyPosts.delete({ where: { postId: data.blueskyId } }),
 	]);
 
 	return json(null);

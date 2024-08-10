@@ -1,23 +1,9 @@
-import { redirect, type LoaderFunctionArgs } from "@remix-run/cloudflare";
-import { discordOauthStateCookie } from "../lib/cookies.server";
-import { env } from "../lib/env.server";
-import { randomBytes } from "crypto";
-import { parseSession } from "../lib/session.server";
+import { type ActionFunctionArgs } from "@remix-run/cloudflare";
 import { Form } from "@remix-run/react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 
-const discordOauthRedirectUrl = new URL("/validate-oauth", env.SERVER_ORIGIN);
-
-export const loader = async ({ request }: LoaderFunctionArgs) => {
-	const session = await parseSession(request);
-	if (session) {
-		throw redirect("/");
-	}
-	return null;
-};
-
-export default () => {
+export default function SignInPage() {
 	const { t } = useTranslation();
 	return (
 		<div className="grid place-items-center">
@@ -26,21 +12,8 @@ export default () => {
 			</Form>
 		</div>
 	);
-};
+}
 
-export const action = async () => {
-	const state = randomBytes(100).toString("base64url");
-
-	const url = new URL("https://discord.com/oauth2/authorize");
-	url.searchParams.append("response_type", "code");
-	url.searchParams.append("client_id", env.DISCORD_CLIENT_ID);
-	url.searchParams.append("scope", "identify guilds.members.read");
-	url.searchParams.append("state", state);
-	url.searchParams.append("redirect_uri", discordOauthRedirectUrl.href);
-
-	throw redirect(url.href, {
-		headers: {
-			"Set-Cookie": await discordOauthStateCookie.serialize(state),
-		},
-	});
+export const action = async ({ request, context }: ActionFunctionArgs) => {
+	return context.auth.authenticate("discord", request);
 };

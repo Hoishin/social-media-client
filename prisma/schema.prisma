@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
-	previewFeatures = ["driverAdapters"]
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -36,7 +36,6 @@ model BlueskyPosts {
 
 model TwitterManageSession {
   id        String   @id
-  status    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

@@ -1,6 +1,7 @@
 /build
 dev.db
 /.dev.vars
+/.wrangler
 
 # Logs
 logs

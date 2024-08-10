@@ -1,3 +1,5 @@
+import { setupTwitterClient } from "./app/api/twitter.server";
+import { BskyAgent } from "@atproto/api";
 import { PrismaD1 } from "@prisma/adapter-d1";
 import { PrismaClient } from "@prisma/client";
 import {
@@ -12,69 +14,121 @@ import { type PlatformProxy } from "wrangler";
 type Cloudflare = Omit<PlatformProxy<Env>, "dispose">;
 
 declare module "@remix-run/cloudflare" {
-	interface AppLoadContext {
-		db: PrismaClient;
-		auth: Authenticator<Session>;
-	}
+	interface AppLoadContext extends Awaited<ReturnType<typeof getLoadContext>> {}
 }
 
 type Session = Readonly<{ discordId: string; displayName: string }>;
 
-export const getLoadContext = ({
+export const getLoadContext = async ({
 	context: { cloudflare },
 }: {
 	context: { cloudflare: Cloudflare };
 }) => {
 	const db = new PrismaClient({ adapter: new PrismaD1(cloudflare.env.DB) });
 
-	const sessionStorage = createWorkersKVSessionStorage({
-		kv: cloudflare.env.SESSION_KV,
-		cookie: createCookie("session", {
-			secure: cloudflare.env.LOCAL !== "true",
-			httpOnly: true,
-			path: "/",
-			secrets: [cloudflare.env.SESSION_COOKIE_SECRET],
-			maxAge: 60 * 60 * 24 * 14,
-		}),
-	});
+	const createAuth = () => {
+		const sessionStorage = createWorkersKVSessionStorage({
+			kv: cloudflare.env.SESSION_KV,
+			cookie: createCookie("session", {
+				secure: cloudflare.env.LOCAL !== "true",
+				httpOnly: true,
+				path: "/",
+				secrets: [cloudflare.env.SESSION_COOKIE_SECRET],
+				maxAge: 60 * 60 * 24 * 14,
+			}),
+		});
 
-	const auth = new Authenticator<Session>(sessionStorage);
+		const auth = new Authenticator<Session>(sessionStorage);
 
-	const discordStrategy = new DiscordStrategy(
-		{
-			clientID: cloudflare.env.DISCORD_CLIENT_ID,
-			clientSecret: cloudflare.env.DISCORD_CLIENT_SECRET,
-			callbackURL: "/sign-in/callback/discord",
-			scope: ["identify"],
-		},
-		async ({ profile, accessToken }) => {
-			const validRoles = new Set<string>(cloudflare.env.DISCORD_VALID_ROLE_IDS);
-			const userGuild = await ky
-				.get(
-					`https://discord.com/api/users/@me/guilds/${cloudflare.env.DISCORD_SERVER_ID}/member`,
-					{ headers: { authorization: `Bearer ${accessToken}` } }
-				)
-				.json<{ roles: string[] }>()
-				.catch(async (error) => {
-					if (!(error instanceof HTTPError)) {
-						throw error;
-					}
-					const responseData = await error.response.text();
-					console.error("failed to get user info", responseData);
-					if (error.response.status === 404) {
-						throw new Error("not in the server");
-					}
-					throw new Error("failed to get user info");
-				});
-			const isValidUser = userGuild.roles.some((role) => validRoles.has(role));
-			if (!isValidUser) {
-				throw new Error("no sufficient roles");
+		const discordStrategy = new DiscordStrategy(
+			{
+				clientID: cloudflare.env.DISCORD_CLIENT_ID,
+				clientSecret: cloudflare.env.DISCORD_CLIENT_SECRET,
+				callbackURL: "/auth/callback",
+				scope: ["identify", "guilds.members.read"],
+			},
+			async ({ profile, accessToken }) => {
+				const validRoles = new Set<string>(
+					cloudflare.env.DISCORD_VALID_ROLE_IDS
+				);
+				const userGuild = await ky
+					.get(
+						`https://discord.com/api/users/@me/guilds/${cloudflare.env.DISCORD_SERVER_ID}/member`,
+						{ headers: { authorization: `Bearer ${accessToken}` } }
+					)
+					.json<{ roles: string[] }>()
+					.catch(async (error) => {
+						if (!(error instanceof HTTPError)) {
+							throw error;
+						}
+						const responseData = await error.response.text();
+						console.error("failed to get user info", responseData);
+						if (error.response.status === 404) {
+							throw new Error("not in the server");
+						}
+						throw new Error("failed to get user info");
+					});
+				const isValidUser = userGuild.roles.some((role) =>
+					validRoles.has(role)
+				);
+				if (!isValidUser) {
+					throw new Error("no sufficient roles");
+				}
+				return { discordId: profile.id, displayName: profile.displayName };
 			}
-			return { discordId: profile.id, displayName: profile.displayName };
+		);
+
+		auth.use(discordStrategy);
+
+		return auth;
+	};
+
+	const createBluesky = async () => {
+		if (!cloudflare.env.BLUESKY_USERNAME || !cloudflare.env.BLUESKY_PASSWORD) {
+			return { enabled: false } as const;
 		}
-	);
+		const agent = new BskyAgent({ service: "https://bsky.social" });
+		await agent.login({
+			identifier: cloudflare.env.BLUESKY_USERNAME,
+			password: cloudflare.env.BLUESKY_PASSWORD,
+		});
+		const selfProfile = await agent.getProfile({
+			actor: cloudflare.env.BLUESKY_USERNAME,
+		});
+		return {
+			enabled: true,
+			agent,
+			username: cloudflare.env.BLUESKY_USERNAME,
+			selfDid: selfProfile.data.did,
+		} as const;
+	};
 
-	auth.use(discordStrategy);
+	const setupTwitter = () => {
+		if (
+			typeof cloudflare.env.TWITTER_USERNAME !== "string" ||
+			typeof cloudflare.env.TWITTER_PASSWORD !== "string"
+		) {
+			return { enabled: false } as const;
+		}
+		return {
+			enabled: true,
+			username: cloudflare.env.TWITTER_USERNAME,
+			password: cloudflare.env.TWITTER_PASSWORD,
+			...setupTwitterClient({
+				manageOrigin: cloudflare.env.TWITTER_MANAGE_ORIGIN,
+				manageAuth: cloudflare.env.TWITTER_MANAGE_AUTH,
+				username: cloudflare.env.TWITTER_USERNAME,
+				password: cloudflare.env.TWITTER_PASSWORD,
+				email: cloudflare.env.TWITTER_USER_EMAIL,
+				db,
+			}),
+		};
+	};
 
-	return { db, auth };
+	return {
+		db,
+		auth: createAuth(),
+		twitter: setupTwitter(),
+		bluesky: await createBluesky(),
+	};
 };

@@ -31,10 +31,10 @@ export const meta: MetaFunction = () => [
 
 export const links: LinksFunction = () => [{ rel: "icon", href: "data:," }];
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
+export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 	const [locale, session] = await Promise.all([
 		remixI18next.getLocale(request),
-		parseSession(request),
+		parseSession(request, context),
 	]);
 	return json({ locale, session });
 };
@@ -71,7 +71,7 @@ const Header = () => {
 	return (
 		<header className="flex gap-2">
 			<div className="grow">
-				{t("signedInAs", { username: session.username })}
+				{t("signedInAs", { username: session.displayName })}
 			</div>
 			<ThemeModeToggle />
 			<SignOutButton />

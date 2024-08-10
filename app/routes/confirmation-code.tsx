@@ -4,7 +4,6 @@ import {
 	type ActionFunctionArgs,
 	type LoaderFunctionArgs,
 } from "@remix-run/cloudflare";
-import { getStatus, inputConfirmationCode } from "../api/twitter.server";
 import { Form } from "@remix-run/react";
 import { zfd } from "zod-form-data";
 import { z } from "zod";
@@ -12,9 +11,12 @@ import { assertSession } from "../lib/session.server";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
-	await assertSession(request);
-	const status = await getStatus();
+export const loader = async ({ request, context }: LoaderFunctionArgs) => {
+	await assertSession(request, context);
+	if (!context.twitter.enabled) {
+		throw redirect("/");
+	}
+	const status = await context.twitter.getStatus();
 	if (status !== "waitingForConfirmationCode") {
 		throw redirect("/");
 	}
@@ -41,10 +43,14 @@ const actionSchema = zfd.formData({
 	code: zfd.text(z.string()),
 });
 
-export const action = async ({ request }: ActionFunctionArgs) => {
-	await assertSession(request);
+export const action = async ({ request, context }: ActionFunctionArgs) => {
+	await assertSession(request, context);
+
+	if (!context.twitter.enabled) {
+		throw new Response(null, { status: 400 });
+	}
 
 	const data = actionSchema.parse(await request.formData());
-	await inputConfirmationCode(data.code);
+	await context.twitter.inputConfirmationCode(data.code);
 	throw redirect("/");
 };
